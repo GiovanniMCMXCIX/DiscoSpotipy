@@ -1,4 +1,5 @@
 #!/usr/bin/python3
+import argparse
 import asyncio
 import functools
 import json
@@ -51,6 +52,9 @@ class DiscordRPC:
             self.ipc_path = r'\\?\pipe\discord-ipc-0'
             self.loop = asyncio.ProactorEventLoop()
 
+        parser = argparse.ArgumentParser()
+        parser.add_argument('--verbose', '-v', action='store_true', default=False)
+        self.verbose = parser.parse_args().verbose
         self.session = aiohttp.ClientSession(loop=self.loop)
         self.spotify = {
             'id': 'd5e182d9623e4ed98b2aa881a66ffd61',
@@ -221,16 +225,19 @@ class DiscordRPC:
                 elif d['is_playing']:
                     timestamp = await run(d)
                 init = False
-            await asyncio.sleep(2.5)
+            await asyncio.sleep(5)
 
     async def run(self):
         await self.handshake()
-        self.read_loop = self.loop.create_task(self.read_output())
+        if self.verbose:
+            self.read_loop = self.loop.create_task(self.read_output())
         self.get_config()
         await self.get_spotify_token()
         await self.detect_now_playing()
 
     def close(self):
+        if self.verbose:
+            self.read_loop.close()
         self.sock_writer.close()
         self.loop.close()
         exit(0)
