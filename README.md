@@ -1,5 +1,5 @@
 # DiscoSpotipy
-Spotify Rich Presence for Discord made written in Python.
+Spotify Rich Presence for Discord written in Python.
 
 ## Quick Notes
 * If you get redirected to a "This site can’t be reached" page just copy and paste the url into the console.
