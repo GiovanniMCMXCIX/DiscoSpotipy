@@ -228,11 +228,14 @@ class DiscordRPC:
             await asyncio.sleep(5)
 
     async def run(self):
+        print("Starting...")
         await self.handshake()
         if self.verbose:
             self.read_loop = self.loop.create_task(self.read_output())
         self.get_config()
         await self.get_spotify_token()
+        print("Ready!")
+        print("The app is now running! Leave this window open!")
         await self.detect_now_playing()
 
     def close(self):
