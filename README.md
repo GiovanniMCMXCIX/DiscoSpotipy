@@ -9,3 +9,10 @@ Spotify Rich Presence for Discord written in Python.
 • Python 3.6+
 • `aiohttp` and `spotipy` libraries
 • `psutil` for windows users
+
+## Issues
+I made this repo just to work for now, I didn't have time to write it in the "good ways"
+
+So instead of spamming issues, you can go annoy me on my discord server to tell me your 100 reasons why I suck
+
+[![discord](https://discordapp.com/api/v7/guilds/119860281919668226/embed.png?style=banner2)](https://discord.gg/u5F8y9W)
