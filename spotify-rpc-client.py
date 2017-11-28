@@ -242,6 +242,7 @@ class DiscordRPC:
         if self.verbose:
             self.read_loop.close()
         self.sock_writer.close()
+        self.session.close()
         self.loop.close()
         exit(0)
 
