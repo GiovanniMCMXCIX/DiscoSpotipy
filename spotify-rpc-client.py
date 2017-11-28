@@ -100,8 +100,8 @@ class DiscordRPC:
         self.send_data(0, {'v': 1, 'client_id': '384332129905147904'})
 
     async def get_spotify_token(self):
-        if os.path.isfile('.cache-giovani1906'):
-            config = json.load(open('.cache-giovani1906'))
+        if os.path.isfile(f'.cache-{self.username}'):
+            config = json.load(open(f'.cache-{self.username}'))
             if int(config['expires_at'] / 1000) > time.time():
                 self.token = config['access_token']
                 return
