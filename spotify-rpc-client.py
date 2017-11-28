@@ -21,7 +21,7 @@ try:
 except ImportError:
     to_install.append('spotipy')
 
-if sys.platform == 'win32':
+if sys.platform.startswith('win'):
     try:
         import psutil
     except ImportError:
@@ -34,7 +34,7 @@ if to_install:
     opts, args = cmd.parse_args(to_install)
     cmd.run(opts, args)
 
-    if sys.platform == 'win32':
+    if sys.platform.startswith('win'):
         import psutil
     import aiohttp
     import spotipy
@@ -42,13 +42,13 @@ if to_install:
 
 class DiscordRPC:
     def __init__(self):
-        if sys.platform == 'linux' or sys.platform == 'darwin':
+        if sys.platform in ['linux', 'darwin']:
             env_vars = ['XDG_RUNTIME_DIR', 'TMPDIR', 'TMP', 'TEMP']
             path = next((os.environ.get(path, None) for path in env_vars if path in os.environ), '/tmp')
             self.ipc_path = f'{path}/discord-ipc-0'
             self.loop = asyncio.get_event_loop()
 
-        elif sys.platform == 'win32':
+        elif sys.platform.startswith('win'):
             self.ipc_path = r'\\?\pipe\discord-ipc-0'
             self.loop = asyncio.ProactorEventLoop()
 
@@ -89,10 +89,10 @@ class DiscordRPC:
         self.sock_writer.write(struct.pack('<ii', op, len(payload)) + payload.encode('utf-8'))
 
     async def handshake(self):
-        if sys.platform == 'linux' or sys.platform == 'darwin':
+        if sys.platform in ['linux', 'darwin']:
             self.sock_reader, self.sock_writer = await asyncio.open_unix_connection(self.ipc_path, loop=self.loop)
 
-        elif sys.platform == 'win32':
+        elif sys.platform.startswith('win'):
             self.sock_reader = asyncio.StreamReader(loop=self.loop)
             reader_protocol = asyncio.StreamReaderProtocol(self.sock_reader, loop=self.loop)
             self.sock_writer, _ = await self.loop.create_pipe_connection(lambda: reader_protocol, self.ipc_path)
@@ -112,7 +112,7 @@ class DiscordRPC:
 
     @staticmethod
     async def get_pid(process_name: str):
-        if sys.platform == 'linux' or sys.platform == 'darwin':
+        if sys.platform in ['linux', 'darwin']:
             process = await asyncio.create_subprocess_shell(f'pgrep {process_name}', stdout=asyncio.subprocess.PIPE)
             stdout = (await process.communicate())[0]
             if stdout == b'':
@@ -120,7 +120,7 @@ class DiscordRPC:
                 exit(1)
             return int(stdout.decode('utf-8').split('\n')[0])
 
-        elif sys.platform == 'win32':
+        elif sys.platform.startswith('win'):
             process_list = [p for p in psutil.process_iter() if p.name() == process_name]
             if process_list:
                 return next(reversed(process_list)).pid
@@ -147,7 +147,7 @@ class DiscordRPC:
             pid = await self.get_pid('spotify')
         elif sys.platform == 'darwin':
             pid = await self.get_pid('Spotify')
-        elif sys.platform == 'windows':
+        elif sys.platform.startswith('win'):
             pid = await self.get_pid('Spotify.exe')
 
         async def run(data: dict, paused=False):
