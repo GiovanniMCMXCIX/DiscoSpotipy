@@ -153,7 +153,7 @@ class DiscordRPC:
         async def run(data: dict, paused=False):
             async with self.session.request('GET', data['item']['album']['href'], headers={'Authorization': f'Bearer {self.token}'}) as resp:
                 album = json.loads(await resp.text())
-            _time = int(time.time())
+            _time = int(time.time()) - int(data['progress_ms'] / 1000)
             payload = {
                 'cmd': 'SET_ACTIVITY',
                 'args': {
@@ -177,7 +177,7 @@ class DiscordRPC:
             if not paused:
                 payload['args']['activity']['timestamps'] = {
                     'start': _time,
-                    'end': _time + (int(data['item']['duration_ms'] / 1000) - int(data['progress_ms'] / 1000)) + 2
+                    'end': _time + int(data['item']['duration_ms'] / 1000)
                 }
             self.send_data(1, payload)
             return data['timestamp']
@@ -199,9 +199,17 @@ class DiscordRPC:
                     exit(1)
 
             if not init and d == '':
-                exit(0)
+                _pid = None
+                if sys.platform == 'linux':
+                    _pid = await self.get_pid('spotify')
+                elif sys.platform == 'darwin':
+                    _pid = await self.get_pid('Spotify')
+                elif sys.platform.startswith('win'):
+                    _pid = await self.get_pid('Spotify.exe')
+                if not _pid:
+                    exit(0)
 
-            if init or (time.time() if 'timestamp' not in d else d['timestamp']) != timestamp:
+            if init or (timestamp if 'timestamp' not in d else d['timestamp']) != timestamp:
                 if init and d == '' or not d['is_playing'] and d['progress_ms'] == 0:
                     self.send_data(1, {
                         'cmd': 'SET_ACTIVITY',
