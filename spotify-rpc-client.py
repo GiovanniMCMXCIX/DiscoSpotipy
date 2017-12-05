@@ -9,35 +9,11 @@ import sys
 import time
 import uuid
 
-to_install = []
-
-try:
-    import aiohttp
-except ImportError:
-    to_install.append('aiohttp')
-
-try:
-    import spotipy.util
-except ImportError:
-    to_install.append('spotipy')
+import aiohttp
+import spotipy.util
 
 if sys.platform.startswith('win'):
-    try:
-        import psutil
-    except ImportError:
-        to_install.append('psutil')
-
-if to_install:
-    from pip.commands.install import InstallCommand
-
-    cmd = InstallCommand()
-    opts, args = cmd.parse_args(to_install)
-    cmd.run(opts, args)
-
-    if sys.platform.startswith('win'):
-        import psutil
-    import aiohttp
-    import spotipy
+    import psutil
 
 
 class DiscordRPC:
@@ -76,12 +52,14 @@ class DiscordRPC:
             if data == b'':
                 self.sock_writer.close()
                 exit(0)
-            try:
-                code, length = struct.unpack('<ii', data[:8])
-                print(f'OP Code: {code}; Length: {length}; Response:\n{json.loads(data[8:].decode("utf-8"))}\n')
-            except struct.error:
-                print(f'Something happened')
-                print(data)
+
+            if self.verbose:
+                try:
+                    code, length = struct.unpack('<ii', data[:8])
+                    print(f'OP Code: {code}; Length: {length}; Response:\n{json.loads(data[8:].decode("utf-8"))}\n')
+                except struct.error:
+                    print(f'Something happened')
+                    print(data)
             await asyncio.sleep(1)
 
     def send_data(self, op: int, payload: dict):
@@ -164,16 +142,18 @@ class DiscordRPC:
                             'size': [data['item']['track_number'], album['tracks']['total']]
                         },
                         'assets': {
-                            'large_text': 'music',
-                            'large_image': 'background',
-                            'small_text': 'on spotify',
-                            'small_image': 'spotify'
+                            'large_text': album['uri'],
+                            'large_image': 'spotify',
+                            'small_text': data['item']['uri'],
+                            'small_image': 'playing'
                         },
                     },
                     'pid': pid
                 },
                 'nonce': str(uuid.uuid4())
             }
+            if paused:
+                payload['args']['activity']['assets']['small_image'] = 'paused'
             if not paused:
                 payload['args']['activity']['timestamps'] = {
                     'start': _time,
@@ -217,10 +197,8 @@ class DiscordRPC:
                             'activity': {
                                 'details': 'Not playing anything...',
                                 'assets': {
-                                    'large_text': 'music',
-                                    'large_image': 'background',
-                                    'small_text': 'on spotify',
-                                    'small_image': 'spotify'
+                                    'large_text': 'Spotify',
+                                    'large_image': 'spotify'
                                 },
                             },
                             'pid': pid
@@ -238,8 +216,7 @@ class DiscordRPC:
     async def run(self):
         print("Starting...")
         await self.handshake()
-        if self.verbose:
-            self.read_loop = self.loop.create_task(self.read_output())
+        self.read_loop = self.loop.create_task(self.read_output())
         self.get_config()
         await self.get_spotify_token()
         print("Ready!")
@@ -247,8 +224,7 @@ class DiscordRPC:
         await self.detect_now_playing()
 
     def close(self):
-        if self.verbose:
-            self.read_loop.close()
+        self.read_loop.cancel()
         self.sock_writer.close()
         self.session.close()
         self.loop.close()
