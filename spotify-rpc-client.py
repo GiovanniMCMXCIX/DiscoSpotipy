@@ -20,8 +20,7 @@ class DiscordRPC:
     def __init__(self):
         if sys.platform in ['linux', 'darwin']:
             env_vars = ['XDG_RUNTIME_DIR', 'TMPDIR', 'TMP', 'TEMP']
-            path = next((os.environ.get(path, None)
-                         for path in env_vars if path in os.environ), '/tmp')
+            path = next((os.environ.get(path, None) for path in env_vars if path in os.environ), '/tmp')
             self.ipc_path = f'{path}/discord-ipc-0'
             self.loop = asyncio.get_event_loop()
 
@@ -57,8 +56,7 @@ class DiscordRPC:
             if self.verbose:
                 try:
                     code, length = struct.unpack('<ii', data[:8])
-                    print(
-                        f'OP Code: {code}; Length: {length}; Response:\n{json.loads(data[8:].decode("utf-8"))}\n')
+                    print(f'OP Code: {code}; Length: {length}; Response:\n{json.loads(data[8:].decode("utf-8"))}\n')
                 except struct.error:
                     print(f'Something happened')
                     print(data)
@@ -86,8 +84,10 @@ class DiscordRPC:
                 self.token = config['access_token']
                 return
 
-        kwargs = {'scope': self.spotify['scope'], 'client_id': self.spotify['id'],
-                  'client_secret': self.spotify['secret'], 'redirect_uri': self.spotify['redirect_uri']}
+        kwargs = {
+            'scope': self.spotify['scope'], 'client_id': self.spotify['id'],
+            'client_secret': self.spotify['secret'], 'redirect_uri': self.spotify['redirect_uri']
+        }
         func = functools.partial(spotipy.util.prompt_for_user_token, self.username, **kwargs)
         self.token = await self.loop.run_in_executor(None, func)
 
@@ -133,7 +133,8 @@ class DiscordRPC:
 
         async def run(data: dict, paused=False):
             try:
-                async with self.session.request('GET', data['item']['album']['href'], headers={'Authorization': f'Bearer {self.token}'}) as resp:
+                headers = {'Authorization': f'Bearer {self.token}'}
+                async with self.session.request('GET', data['item']['album']['href'], headers=headers) as resp:
                     album = json.loads(await resp.text())
                     _time = int(time.time()) - int(data['progress_ms'] / 1000)
                     payload = {
@@ -165,7 +166,10 @@ class DiscordRPC:
                         }
                     self.send_data(1, payload)
                     return data['timestamp']
-            except:
+            except Exception:
+                if self.verbose:
+                    import traceback
+                    print(traceback.format_exc())
                 pass
 
         while True:
