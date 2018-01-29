@@ -20,7 +20,8 @@ class DiscordRPC:
     def __init__(self):
         if sys.platform in ['linux', 'darwin']:
             env_vars = ['XDG_RUNTIME_DIR', 'TMPDIR', 'TMP', 'TEMP']
-            path = next((os.environ.get(path, None) for path in env_vars if path in os.environ), '/tmp')
+            path = next((os.environ.get(path, None)
+                         for path in env_vars if path in os.environ), '/tmp')
             self.ipc_path = f'{path}/discord-ipc-0'
             self.loop = asyncio.get_event_loop()
 
@@ -56,7 +57,8 @@ class DiscordRPC:
             if self.verbose:
                 try:
                     code, length = struct.unpack('<ii', data[:8])
-                    print(f'OP Code: {code}; Length: {length}; Response:\n{json.loads(data[8:].decode("utf-8"))}\n')
+                    print(
+                        f'OP Code: {code}; Length: {length}; Response:\n{json.loads(data[8:].decode("utf-8"))}\n')
                 except struct.error:
                     print(f'Something happened')
                     print(data)
@@ -84,7 +86,8 @@ class DiscordRPC:
                 self.token = config['access_token']
                 return
 
-        kwargs = {'scope': self.spotify['scope'], 'client_id': self.spotify['id'], 'client_secret': self.spotify['secret'], 'redirect_uri': self.spotify['redirect_uri']}
+        kwargs = {'scope': self.spotify['scope'], 'client_id': self.spotify['id'],
+                  'client_secret': self.spotify['secret'], 'redirect_uri': self.spotify['redirect_uri']}
         func = functools.partial(spotipy.util.prompt_for_user_token, self.username, **kwargs)
         self.token = await self.loop.run_in_executor(None, func)
 
@@ -129,38 +132,41 @@ class DiscordRPC:
             pid = await self.get_pid('Spotify.exe')
 
         async def run(data: dict, paused=False):
-            async with self.session.request('GET', data['item']['album']['href'], headers={'Authorization': f'Bearer {self.token}'}) as resp:
-                album = json.loads(await resp.text())
-            _time = int(time.time()) - int(data['progress_ms'] / 1000)
-            payload = {
-                'cmd': 'SET_ACTIVITY',
-                'args': {
-                    'activity': {
-                        'state': f'{album["name"]}' if not paused else f'{album["name"]} [Paused]',
-                        'details': f'{data["item"]["name"]} by {", ".join([artist["name"] for artist in data["item"]["artists"]])}',
-                        'party': {
-                            'size': [data['item']['track_number'], album['tracks']['total']]
+            try:
+                async with self.session.request('GET', data['item']['album']['href'], headers={'Authorization': f'Bearer {self.token}'}) as resp:
+                    album = json.loads(await resp.text())
+                    _time = int(time.time()) - int(data['progress_ms'] / 1000)
+                    payload = {
+                        'cmd': 'SET_ACTIVITY',
+                        'args': {
+                            'activity': {
+                                'state': f'{album["name"]}' if not paused else f'{album["name"]} [Paused]',
+                                'details': f'{data["item"]["name"]} by {", ".join([artist["name"] for artist in data["item"]["artists"]])}',
+                                'party': {
+                                    'size': [data['item']['track_number'], album['tracks']['total']]
+                                },
+                                'assets': {
+                                    'large_text': album['uri'],
+                                    'large_image': 'spotify',
+                                    'small_text': data['item']['uri'],
+                                    'small_image': 'playing'
+                                },
+                            },
+                            'pid': pid
                         },
-                        'assets': {
-                            'large_text': album['uri'],
-                            'large_image': 'spotify',
-                            'small_text': data['item']['uri'],
-                            'small_image': 'playing'
-                        },
-                    },
-                    'pid': pid
-                },
-                'nonce': str(uuid.uuid4())
-            }
-            if paused:
-                payload['args']['activity']['assets']['small_image'] = 'paused'
-            if not paused:
-                payload['args']['activity']['timestamps'] = {
-                    'start': _time,
-                    'end': _time + int(data['item']['duration_ms'] / 1000)
-                }
-            self.send_data(1, payload)
-            return data['timestamp']
+                        'nonce': str(uuid.uuid4())
+                    }
+                    if paused:
+                        payload['args']['activity']['assets']['small_image'] = 'paused'
+                    if not paused:
+                        payload['args']['activity']['timestamps'] = {
+                            'start': _time,
+                            'end': _time + int(data['item']['duration_ms'] / 1000)
+                        }
+                    self.send_data(1, payload)
+                    return data['timestamp']
+            except:
+                pass
 
         while True:
             async with self.session.request('GET', 'https://api.spotify.com/v1/me/player/currently-playing', headers={'Authorization': f'Bearer {self.token}'}) as response:
